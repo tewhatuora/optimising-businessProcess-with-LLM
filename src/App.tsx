@@ -21,9 +21,9 @@ const assistantOptions: AssistantOption[] = [
     description: "Summarise meeting minutes from a file or text input"
   },
   {
-    id: "asst_xxx789",
-    name: "TEST-2-DON'T USE",
-    description: "Placeholder for other usecase"
+    id: "asst_yH75KL07chJztcQJ2FvAnD4A",
+    name: "DEMO",
+    description: "Discover What AI Can Do for You"
   }
 ];
 
@@ -114,35 +114,53 @@ function App() {
           msg => msg.role === "assistant" && msg.content && msg.content.length > 0
         );
 
-        if (assistantMessage) {
-          const content = assistantMessage.content[0];
-          const responseText = content?.text?.value || "No response content";
-          const cleanedText = responseText.replace(/【\d+:\d+†source】/g,'');
-          
-          // console.log("Full Assistant Message Content:", JSON.stringify(content, null, 2));
-          
-          const annotations = content?.text?.annotations || [];
-          const fileIds = annotations
-            .filter(ann => ann.file_citation)
-            .map(ann => ann.file_citation.file_id);
-      
-          const uniqueFileIds = [...new Set(fileIds)];
-          const fileNames: string[] = [];
+      if (assistantMessage) {
+      const content = assistantMessage.content[0];
+      console.log("Assistant content object:", content);
+    
+      const responseText = content?.text?.value || "No response content";
+      const annotations = content?.text?.annotations || [];
+    
+      // Map file_id to filename
+      const fileIdToNameMap: Record<string, string> = {};
+    
+      // Collect unique file_ids
+      const uniqueFileIds = [
+        ...new Set(annotations.map(ann => ann.file_citation?.file_id).filter(Boolean)),
+      ];
 
-          for (const fileId of uniqueFileIds) {
-            try {
-              const fileInfo = await client.files.retrieve(fileId);
-              fileNames.push(fileInfo.filename);
-            } catch (err) {
-              console.warn(`Could not retrieve file info for ID ${fileId}`, err);
-            }
-          }
-          
-          const sourceText = fileNames.length > 0
-            ? `\n\nSources:\n- ${fileNames.join('\n- ')}`
-            : '';
+      const fileNames: string[] = [];
+    
+      // Fetch filenames and populate map
+      for (const fileId of uniqueFileIds) {
+        try {
+          const fileInfo = await client.files.retrieve(fileId);
+          fileIdToNameMap[fileId] = fileInfo.filename;
+          fileNames.push(fileInfo.filename);
+        } catch (err) {
+          console.warn(`Could not retrieve file info for ID ${fileId}`, err);
+          fileIdToNameMap[fileId] = "Unknown File";
+          fileNames.push("Unknown File");
+        }
+      }
+    
+      // Replace numbered source markers with filenames
+      let finalText = responseText;
+      for (const annotation of annotations) {
+        if (annotation.type === 'file_citation') {
+          const marker = annotation.text; // e.g., " "
+          const fileId = annotation.file_citation?.file_id;
+          const fileName = fileIdToNameMap[fileId] || 'Unknown File';
+    
+          finalText = finalText.replace(marker, `(${fileName})`);
+        }
+      }
+
+      const sourceText = fileNames.length >0 ? `\n\nSources:\n- ${fileNames.join('\n- ')}`
+        : '';
       
-          setResult(cleanedText + sourceText);
+        setResult(finalText + sourceText);
+        
         } else {
           setResult("No response content available");
         }
@@ -167,21 +185,22 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-semibold text-gray-900 mb-8">
-          {selectedAssistant.description}
-        </h1>
+    <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-4">
+        <div className="bg-[#1B4D5C] text-white rounded-xl shadow-lg p-6">
+          {/* <h1 className="text-3xl font-bold mb-2">AI Assistant</h1> */}
+          <p className="text-lg opacity-90">{selectedAssistant.description}</p>
+        </div>
         
-        <div className="mb-6">
-          <label htmlFor="assistant-select" className="block text-sm font-medium text-gray-700 mb-2">
-            Select Your Usecase
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <label htmlFor="assistant-select" className="block text-lg font-semibold text-gray-900 mb-2">
+            Select Your Use Case
           </label>
           <select
             id="assistant-select"
             value={selectedAssistant.id}
             onChange={(e) => setSelectedAssistant(assistantOptions.find(opt => opt.id === e.target.value) || assistantOptions[0])}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1B4D5C] focus:border-transparent text-gray-700 bg-gray-50 transition duration-150"
           >
             {assistantOptions.map((option) => (
               <option key={option.id} value={option.id}>
@@ -191,15 +210,15 @@ function App() {
           </select>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <h2 className="text-xl font-medium text-gray-900">Input</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 space-y-4">
+            <h2 className="text-2xl font-semibold text-gray-900">Input</h2>
             <div className="relative">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Paste text here"
-                className="w-full h-96 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                placeholder="Enter your text here..."
+                className="w-full h-96 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B4D5C] focus:border-transparent resize-none bg-gray-50"
               />
               <div className="absolute bottom-4 left-4">
                 <input 
@@ -212,7 +231,7 @@ function App() {
                 />
                 <label
                   htmlFor="file-upload"
-                  className="inline-flex items-center text-gray-600 hover:text-gray-900 cursor-pointer">
+                  className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-150 cursor-pointer">
                   <Paperclip className="w-5 h-5 mr-2" />
                   <span>{file ? file.name : "Attach a file"}</span>
                 </label>
@@ -222,26 +241,36 @@ function App() {
               <button
                 onClick={handleProcess}
                 disabled={isLoading || !input}
-                className={`px-6 py-2 bg-[#1B4D5C] text-white rounded hover:bg-[#153e4a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1B4D5C] ${
+                className={`flex-1 px-6 py-3 bg-[#1B4D5C] text-white rounded-lg hover:bg-[#153e4a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1B4D5C] transition duration-150 ${
                   (isLoading || !input) && 'opacity-50 cursor-not-allowed'
                 }`}
               >
-                {isLoading ? 'Processing...' : 'Process'}
+                {isLoading ? (
+                  <span className="flex items-center justify-center">
+                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                    Processing...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center">
+                    <Send className="w-5 h-5 mr-2" />
+                    Process
+                  </span>
+                )}
               </button>
               <button
                 onClick={handleReset}
-                className="px-6 py-2 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-150"
               >
                 Reset
               </button>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h2 className="text-xl font-medium text-gray-900">Result</h2>
-            <div className="bg-white p-4 border border-gray-300 rounded-lg h-96 overflow-auto">
+          <div className="bg-white rounded-xl shadow-lg p-6 space-y-4">
+            <h2 className="text-2xl font-semibold text-gray-900">Result</h2>
+            <div className="bg-gray-50 p-6 border border-gray-200 rounded-lg h-96 overflow-auto">
               {result ? (
-                <div className="prose max-w-none whitespace-pre-wrap">
+                <div className="prose max-w-none whitespace-pre-wrap text-gray-700">
                   {result}
                 </div>
               ) : (
@@ -251,6 +280,12 @@ function App() {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="bg-[#3C8795] text-white rounded-xl shadow-lg p-6">
+          <p className="text-sm leading-relaxed">
+            Try out our AI Assistant, powered by Azure OpenAI, to explore how generative AI can support your work. Test ideas, ask questions, and discover potential use cases in a safe sandbox environment. If you find it useful, we can explore how to tailor it for your team's needs.
+          </p>
         </div>
       </div>
     </div>
