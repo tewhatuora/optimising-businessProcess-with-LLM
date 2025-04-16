@@ -285,6 +285,8 @@ function App() {
         <div className="bg-[#3C8795] text-white rounded-xl shadow-lg p-6">
           <p className="text-sm leading-relaxed">
             Try out our AI Assistant, powered by Azure OpenAI, to explore how generative AI can support your work. Test ideas, ask questions, and discover potential use cases in a safe sandbox environment. If you find it useful, we can explore how to tailor it for your team's needs.
+            <br/><br/>
+            To share ideas or feedback, contact us at <a href="mailto:innovation@tewhatuora.govt.nz" className="underline">innovation@tewhatuora.govt.nz.</a>
           </p>
         </div>
       </div>
